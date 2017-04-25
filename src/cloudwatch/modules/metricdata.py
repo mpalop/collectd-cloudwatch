@@ -78,9 +78,10 @@ class MetricDataBuilder(object):
     vl -- The Collectd ValueList object with metric information
     """
     
-    def __init__(self, config_helper, vl):
+    def __init__(self, config_helper, vl, adjusted_time):
         self.config = config_helper
         self.vl = vl
+        self.adjusted_time = adjusted_time
         
     def build(self):
         """ Builds metric data object with name and dimensions but without value or statistics """

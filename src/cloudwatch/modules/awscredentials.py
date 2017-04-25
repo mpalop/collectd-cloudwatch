@@ -13,3 +13,4 @@ class AWSCredentials(object):
         self.access_key = access_key
         self.secret_key = secret_key
         self.token = token
+        self.use_IAM = not access_key and not secret_key

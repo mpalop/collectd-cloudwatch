@@ -1,4 +1,5 @@
 import os
+import re
 from ..logger.logger import get_logger
 from configreader import ConfigReader
 from metadatareader import MetadataReader
@@ -36,24 +37,22 @@ class ConfigHelper(object):
         self.region = ''
         self.endpoint = ''
         self.host = ''
+        self.proxy_protocol = ''
         self.proxy_server_name = ''
         self.proxy_server_port = ''
         self.debug = False
         self.pass_through = False
+        self.enable_high_definition_metrics = False
+        self.flush_interval_in_seconds = "60"
         self._load_configuration()
         self.whitelist = Whitelist(WhitelistConfigReader(self.WHITELIST_CONFIG_PATH, self.pass_through).get_regex_list(), self.BLOCKED_METRIC_PATH)
 
     @property
     def credentials(self):
         """ 
-        Returns credentials. If IAM role is used, credentials will be updated.
+        Returns credentials. If IAM role is used, credentials will be empty
         Otherwise old credentials are returned.
         """
-        if self._use_iam_role_credentials:
-            try:
-                self._credentials = self._get_credentials_from_iam_role()
-            except:
-                self._LOGGER.warning("Could not retrieve credentials using IAM Role. Using old credentials instead.")
         return self._credentials
 
     @credentials.setter
@@ -88,13 +87,6 @@ class ConfigHelper(object):
         or does not contain credentials, then IAM role is used. 
         """
         self.credentials = self.credentials_reader.credentials
-        if not self.credentials:
-            self._use_iam_role_credentials = True
-            self.credentials = self._get_credentials_from_iam_role()
-            
-    def _get_credentials_from_iam_role(self):
-        """ Queries IAM Role metadata for latest credentials """
-        return self.metadata_reader.get_iam_role_credentials(self.metadata_reader.get_iam_role_name())
         
     def _load_region(self):
         """
@@ -120,16 +112,22 @@ class ConfigHelper(object):
             try:
                 self.host = self.metadata_reader.get_instance_id()
             except Exception as e:
-                ConfigHelper._LOGGER.warning("Cannot retrieve Instance ID from the local metadata server. Cause: " + str(e) +  
-                    " Using host information provided by Collectd.")
+                ConfigHelper._LOGGER.warning("Cannot retrieve Instance ID from the local metadata server. Cause: " +
+                                             str(e) + " Using host information provided by Collectd.")
 
     def _load_proxy_server_name(self):
         """
         Load proxy server name from the configuration file, if configuration file does not contain proxy entry
         then set proxy to None.
         """
-        if self.config_reader.proxy_server_name:
-            self.proxy_server_name = self.config_reader.proxy_server_name
+        the_proxy = self.config_reader.proxy_server_name
+        if the_proxy:
+            proto = re.compile("^(https?)://").findall(the_proxy)
+            if proto and proto[0]:
+                self.proxy_protocol = proto[0]
+                self.proxy_server_name = the_proxy
+            else:
+                raise ValueError("proxy_server_name must start with http: or https:")
         else:
             self.proxy_server_name = None
 
@@ -138,8 +136,12 @@ class ConfigHelper(object):
         Load proxy server port from the configuration file, if configuration file does not contain proxy port entry
         then set proxy to None.
         """
-        if self.config_reader.proxy_server_port:
-            self.proxy_server_port = self.config_reader.proxy_server_port
+        the_port = self.config_reader.proxy_server_port
+        if the_port:
+            if the_port.isdigit():
+                self.proxy_server_port = self.config_reader.proxy_server_port
+            else:
+                raise ValueError("proxy_server_port must be an integer value")
         else:
             self.proxy_server_port = None
 
@@ -156,9 +158,5 @@ class ConfigHelper(object):
         """ Check the state of this configuration helper object to ensure that all required values are loaded """
         if not self._credentials:
             raise ValueError("AWS _credentials are missing.")
-        if not self._credentials.access_key:
-            raise ValueError("AWS access key is missing.")
-        if not self._credentials.secret_key:
-            raise ValueError("AWS secret key is missing.") 
         if not self.region:
             raise ValueError("Region is missing")

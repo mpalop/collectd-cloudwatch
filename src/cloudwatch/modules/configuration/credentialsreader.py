@@ -29,7 +29,7 @@ class CredentialsReader(object):
 
     def __init__(self, creds_path):
         self.creds_path = creds_path
-        self.credentials = None
+        self.credentials = AWSCredentials()
         try:
             self.reader_utils = ReaderUtils(creds_path)
             self._parse_credentials_file()
@@ -51,8 +51,11 @@ class CredentialsReader(object):
              secret_key = self.reader_utils.get_string(self._SECRET_CONFIG_KEY_AWS_FORMAT)
         if not access_key or not secret_key:
             raise CredentialsReaderException("Access key or secret key is missing in the credentials file.")
+
         if access_key and secret_key:
             self.credentials = AWSCredentials(access_key, secret_key)
+        else:
+            self.credentials = AWSCredentials()     # The empty structure to force using IAM_profile
 
 
 class CredentialsReaderException(Exception):

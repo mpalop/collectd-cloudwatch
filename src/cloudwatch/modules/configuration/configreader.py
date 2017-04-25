@@ -24,6 +24,7 @@ class ConfigReader(object):
     _LOGGER = get_logger(__name__)
     _DEBUG_DEFAULT_VALUE = False
     _PASS_THROUGH_DEFAULT_VALUE = False
+    _HIGH_DEFINITION_METRICS = False
     REGION_CONFIG_KEY = "region"
     HOST_CONFIG_KEY = "host"
     CREDENTIALS_PATH_KEY = "credentials_path"
@@ -31,6 +32,8 @@ class ConfigReader(object):
     PASS_THROUGH_CONFIG_KEY = "whitelist_pass_through"
     PROXY_SERVER_NAME_KEY = "proxy_server_name"
     PROXY_SERVER_PORT_KEY = "proxy_server_port"
+    FLUSH_INTERVAL_IN_SECONDS = "flush_interval_in_seconds"
+    ENABLE_HIGH_DEFINITION_METRICS = "enable_high_definition_metrics"
 
     def __init__(self, config_path):
         self.config_path = config_path
@@ -58,3 +61,6 @@ class ConfigReader(object):
         self.proxy_server_port = self.reader_utils.get_string(self.PROXY_SERVER_PORT_KEY)
         self.pass_through = self.reader_utils.try_get_boolean(self.PASS_THROUGH_CONFIG_KEY, self._PASS_THROUGH_DEFAULT_VALUE)
         self.debug = self.reader_utils.try_get_boolean(self.DEBUG_CONFIG_KEY, self._DEBUG_DEFAULT_VALUE)
+        self.flush_interval_in_seconds = self.reader_utils.get_string(self.FLUSH_INTERVAL_IN_SECONDS)
+        self.enable_high_definition_metrics = self.reader_utils.try_get_boolean(self.ENABLE_HIGH_DEFINITION_METRICS,
+                                                                                self._HIGH_DEFINITION_METRICS)
